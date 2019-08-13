@@ -1083,6 +1083,11 @@ interface GPURenderPassEncoder : GPURenderEncoderBase {
     void setBlendColor(GPUColor color);
     void setStencilReference(u32 reference);
 
+    void blit(GPUTextureCopyView source,
+              GPUTextureCopyView destination,
+              GPUExtent3D copySize,
+              GPUAddressMode addressMode);
+
     void executeBundles(sequence<GPURenderBundle> bundles);
     void endPass();
 };
@@ -1093,6 +1098,14 @@ interface GPURenderPassEncoder : GPURenderEncoderBase {
 
   * {{GPURenderPassEncoder/setScissorRect()}}:
       * An error is generated if `width` or `height` is not greater than 0.
+
+  * {{GPURenderPassEncoder/blit()}}:
+      * Blitting is equivalent to a quad-shaped draw call that samples from one
+        texture and renders RGBA data into another, using a sampler with the
+        specified address mode (for both U and V axises) with linear filtering.
+      * An error is generated if either source or destination textures contain
+        depth, stencil, or integer data (that is, their texture format ends with
+        "uint" or "sint".
 
 When a {{GPURenderPassEncoder}} is created, it has the following default state:
   * Viewport:
