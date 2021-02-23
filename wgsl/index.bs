@@ -273,14 +273,6 @@ For convenience, we will use the following shorthands:
 </table>
 
 
-
-## Void Type ## {#void-type}
-
-The <dfn noexport>void</dfn> type contains no values.
-
-It is used where a type is required by the language but where no values are produced or consumed.
-For example, it is used for the return type of a function which does not produce a value.
-
 ## Value Types ## {#value-types}
 
 ### Boolean Type ### {#bool-type}
@@ -1966,7 +1958,7 @@ The variable's [=store type=] must be [=storable=].
 
 <div class='example wgsl global-scope' heading="Function scope variables and constants">
   <xmp highlight='rust'>
-    fn f() -> void {
+    fn f() {
        var<function> count : u32;  // A variable in function storage class.
        var delta : i32;            // Another variable in the function storage class.
        var sum : f32 = 0.0;        // A function storage class variable with initializer.
@@ -2272,7 +2264,7 @@ The zero values are as follows:
       attendance : array<bool,4>;
     };
 
-    fn func() -> void {
+    fn func() {
       var s : Student;
 
       // The zero value for Student
@@ -3614,8 +3606,9 @@ is terminated.
 Otherwise, evaluation continues with the next expression or statement after
 the evaluation of the call site of the current function invocation.
 
-If the return type of the function is the void type, then the return statement is
-optional. If the return statement is provided for a void function it must not have an expression.
+If the function doesn't have a return type, then the return statement is
+optional. If the return statement is provided for such a function, it must not
+supply a value.
 Otherwise the expression must be present, and is called the *return value*.
 In this case the call site of this function invocation evaluates to the return value.
 The type of the return value must match the return type of the function.
@@ -3666,7 +3659,7 @@ statement
 A function declaration may only occur at [=module scope=].
 The function name is available for use after its declaration, until the end of the program.
 
-If the return type of the function is not the void type, then the last statement
+If the return type of the function is specified, then the last statement
 in the function body must be a return statement.
 
 Function names must be unique over all functions and all variables in the
@@ -3676,12 +3669,8 @@ module.
 function_decl
   : decoration_list* function_header body_statement
 
-function_type_decl
-  : type_decl
-  | VOID
-
 function_header
-  : FN IDENT PAREN_LEFT param_list PAREN_RIGHT ARROW function_type_decl
+  : FN IDENT PAREN_LEFT param_list PAREN_RIGHT (ARROW type_decl)?
 
 param_list
   :
@@ -3702,9 +3691,6 @@ param_list
 
 <div class='example' heading='Function'>
   <xmp>
-    void
-        %6 = OpTypeVoid
-
     fn my_func(i : i32, b : f32) -> i32 {
       return 2;
     }
@@ -3793,7 +3779,9 @@ the [SHORTNAME] module and the entry point's function name.
 
 The parameters of an entry point have to be within [=Entry point IO type=]s.
 They have [=storage classes/in=] storage class.
-The return type of an entry point has to be of an [=Entry point IO type=], or [=void=].
+The return type of an entry point has to be of an [=Entry point IO type=], if specified.
+
+Note: compute entry points never have a return type.
 
 <div class='example wgsl global-scope' heading='Entry Point'>
   <xmp>
@@ -3820,7 +3808,7 @@ The return type of an entry point has to be of an [=Entry point IO type=], or [=
        // %return_value = OpVariable %ptr Output
 
     [[stage(compute)]]
-    fn comp_main() -> void { }
+    fn comp_main() { }
        // OpEntryPoint GLCompute %comp_main "comp_main"
   </xmp>
 </div>
@@ -3856,17 +3844,17 @@ ISSUE: Can we query upper bounds on workgroup size dimensions?  Is it independen
 <div class='example wgsl global-scope' heading='workgroup_size Attribute'>
   <xmp>
     [[ stage(compute), workgroup_size(8,1,1) ]]
-    fn sorter() -> void { }
+    fn sorter() { }
        // OpEntryPoint GLCompute %sorter "sorter"
        // OpExecutionMode %sorter LocalSize 8 1 1
 
     [[ stage(compute), workgroup_size(8) ]]
-    fn reverser() -> void { }
+    fn reverser() { }
        // OpEntryPoint GLCompute %reverser "reverser"
        // OpExecutionMode %reverser LocalSize 8 1 1
 
     [[ stage(compute) ]]
-    fn do_nothing() -> void { }
+    fn do_nothing() { }
        // OpEntryPoint GLCompute %do_nothing "do_nothing"
        // OpExecutionMode %do_nothing LocalSize 1 1 1
   </xmp>
@@ -3933,7 +3921,7 @@ The set of built-in outputs are listed in [[#builtin-variables]].
 To declare a variable for accessing a particular output built-in *Y* from an entry point:
 
 * Add a variable to the result of the entry point, where [=store type=] is the listed store type for *Y*:
-  * If the result type was [=void=], change it to the variable type.
+  * If there is no result type for the entry point, change it to the variable type.
   * Otherwise, make the result type to be a structure, where one of the fields is the new variable.
 * Apply a `builtin(`*Y*`)` attribute to the result variable.
 
@@ -4312,7 +4300,6 @@ I've written what an NVIDIA GPU does.  See https://github.com/google/amber/pull/
   <tr><td>`VEC2`<td>vec2
   <tr><td>`VEC3`<td>vec3
   <tr><td>`VEC4`<td>vec4
-  <tr><td>`VOID`<td>void
 </table>
 <table class='data'>
   <caption>Other keywords</caption>
@@ -4473,7 +4460,7 @@ the test name.
 
 * v-0001: A declaration must not introduce a name when that name is already in scope at the start
           of the declaration.
-* v-0002: Non-void functions must end with a return statement.
+* v-0002: Functions with return types specified must end with a return statement.
 * v-0003: At least one of vertex, fragment or compute shader must be present.
 * v-0004: Recursion is not allowed.
 * v-0007: Structures must be defined before use.
@@ -4489,8 +4476,6 @@ the test name.
           module.
 * v-0021: Cannot re-assign a constant.
 * v-0022: Global variables must have a storage class.
-* v-0023: Entry point functions accept no parameters.
-* v-0024: Entry point functions return void.
 * v-0025: Switch statement selector expression must be of a scalar integer type.
 * v-0026: The case selector values must have the same type as the selector expression.
 * v-0027: A literal value must not appear more than once in the case selectors for a switch statement.
@@ -4688,7 +4673,7 @@ See [[#builtin-inputs-outputs]] for how to declare a built-in variable.
       //     OpDecorate %local_index BuiltIn LocalInvocationIndex
       [[builtin(global_invocation_id)]] global_id : vec3<u32>,
       //      OpDecorate %global_id BuiltIn GlobalInvocationId
-   ) -> void;
+   );
   </xmp>
 </div>
 
@@ -5646,10 +5631,10 @@ The sampled value.
 Writes a single texel to a texture.
 
 ```rust
-textureStore(t : [[access(write)]] texture_storage_1d<F>, coords : i32, value : vec4<T>) -> void
-textureStore(t : [[access(write)]] texture_storage_2d<F>, coords : vec2<i32>, value : vec4<T>) -> void
-textureStore(t : [[access(write)]] texture_storage_2d_array<F>, coords : vec2<i32>, array_index : i32, value : vec4<T>) -> void
-textureStore(t : [[access(write)]] texture_storage_3d<F>, coords : vec3<i32>, value : vec4<T>) -> void
+textureStore(t : [[access(write)]] texture_storage_1d<F>, coords : i32, value : vec4<T>)
+textureStore(t : [[access(write)]] texture_storage_2d<F>, coords : vec2<i32>, value : vec4<T>)
+textureStore(t : [[access(write)]] texture_storage_2d_array<F>, coords : vec2<i32>, array_index : i32, value : vec4<T>)
+textureStore(t : [[access(write)]] texture_storage_3d<F>, coords : vec3<i32>, value : vec4<T>)
 ```
 
 The channel format `T` depends on the storage texel format `F`.
